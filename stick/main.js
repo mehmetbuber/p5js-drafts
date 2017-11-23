@@ -1,29 +1,29 @@
 var inc = 0;
 
-var headDiameter = 60;
+var headDiameter = 50;
 var bodyHeight = 160;
-var armLength0 = 40;
-var armLength1 = 40;
+var armLength0 = 50;
+var armLength1 = 50;
 
-var rightArmAngle = 90;
+var rightArmAngle = 120;
 var rightArm1Angle = 0;
-var leftArmAngle = 270;
+var leftArmAngle = 240;
 var leftArm1Angle = 0;
 
-var rightArmAngleMin = 0;
-var rightArmAngleMax = 135;
-var rightArmReverse = false;
+var rightArmAngleMin = 110;
+var rightArmAngleMax = 155;
+var rightArmReverse = true;
 
 var rightArm1AngleMin = 0;
 var rightArm1AngleMax = 360;
 var rightArm1Reverse = false;
 
-var leftArmAngleMin = 225;
-var leftArmAngleMax = 360;
+var leftArmAngleMin = 205;
+var leftArmAngleMax = 250;
 var leftArmReverse = false;
 
 var leftArm1AngleMin = 0;
-var leftArm1AngleMax = 360;
+var leftArm1AngleMax = 135;
 var leftArm1Reverse = false;
 
 function setup() {
@@ -33,6 +33,7 @@ function setup() {
 }
 
 function draw() {
+    console.log(leftArmAngle);
     background(0);
     
     if (leftArmAngle >= leftArmAngleMax)
@@ -40,10 +41,6 @@ function draw() {
     if (leftArmAngle <= leftArmAngleMin)
         leftArmReverse = !leftArmReverse;
 
-    if (leftArmReverse)
-        leftArmAngle++;
-    else
-        leftArmAngle--;
 
     if (rightArmAngle >= rightArmAngleMax)
         rightArmReverse = !rightArmReverse;
@@ -54,27 +51,29 @@ function draw() {
         rightArmAngle++;
     else
         rightArmAngle--;
-    
 
-    rightArm1Angle++;
-    leftArm1Angle++;
-    rightArm1Angle++;
-    leftArm1Angle++;
+    if (leftArmReverse)
+        leftArmAngle++;
+    else
+        leftArmAngle--;
+    
+    rightArm1Angle = 45;
+    leftArm1Angle = -45;
     
     var leftArmX = armLength0 * Math.sin(leftArmAngle * (Math.PI / 180));
     var leftArmY = armLength0 * Math.cos(leftArmAngle * (Math.PI / 180));
 
-    var leftArm1X = armLength1 * Math.sin( leftArm1Angle * (Math.PI / 180));
-    var leftArm1Y = armLength1 * Math.cos( leftArm1Angle * (Math.PI / 180));
+    var leftArm1X = armLength1 * Math.sin((leftArm1Angle + leftArmAngle) * (Math.PI / 180));
+    var leftArm1Y = armLength1 * Math.cos((leftArm1Angle + leftArmAngle) * (Math.PI / 180));
 
     var rightArmX = armLength0 * Math.sin(rightArmAngle * (Math.PI / 180));
     var rightArmY = armLength0 * Math.cos(rightArmAngle * (Math.PI / 180));
 
-    var rightArm1X = armLength1 * Math.sin( rightArm1Angle * (Math.PI / 180));
-    var rightArm1Y = armLength1 * Math.cos( rightArm1Angle * (Math.PI / 180));
+    var rightArm1X = armLength1 * Math.sin((rightArm1Angle + rightArmAngle) * (Math.PI / 180));
+    var rightArm1Y = armLength1 * Math.cos((rightArm1Angle + rightArmAngle) * (Math.PI / 180));
 
     //Head
-    ellipse(width / 2, height / 2, headDiameter, headDiameter);
+    ellipse(width / 2, height / 2 - 10, headDiameter, headDiameter);
 
     stroke(255);
     fill(255);
