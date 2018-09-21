@@ -1,157 +1,169 @@
-var allParticles = [];
-var maxLevel = 3;
-var useFill = false;
+//constants
+var foodCount = 30;
+var initialFoodCount = 0;
+var cellRadius = 60;
+var cellSpeed = 0;
+var nucleusRadius = 20;
+var membraneThickness = 3;
+var friction = 0.1;
+var chunkMass = 2000;
+var chunkSpeed = 10;
 
-var data = [];
-
-var video;
-
-var boxes = [];
-
-var threshold = 90;
-
-var skip = 20;
-
-// Moves to a random direction and comes to a stop.
-// Spawns other particles within its lifetime.
-function Particle(x, y, level) {
-    this.level = level;
-    this.life = 0;
-
-    this.pos = new p5.Vector(x, y);
-    this.vel = p5.Vector.random2D();
-    this.vel.mult(map(this.level, 0, maxLevel, 5, 2));
-
-    this.move = function () {
-        this.life++;
-
-        // Add friction.
-        this.vel.mult(1);
-
-        this.pos.add(this.vel);
-
-        // Spawn a new particle if conditions are met.
-        if (this.life % 10 == 0) {
-            if (this.level > 0) {
-                this.level -= 1;
-                var newParticle = new Particle(this.pos.x, this.pos.y, this.level - 1);
-                //allParticles.push(newParticle);
-            }
-        }
-    }
-}
-
+var cell;
+var backgroundColor;
+var frame = 0;
+var foods = [];
+var direction = 1;
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
 
-    colorMode(HSB, 360);
-
-    textAlign(CENTER);
-
-    background(0);
-
-
-    video = createCapture(VIDEO);
-    video.size(windowWidth, windowHeight);
-
+    backgroundColor = color(225, 225, 225);
+    background(backgroundColor);
     frameRate(30);
+
+    cell = new Cell(cellRadius);
+    cell.volume = cell.getVolume();
+    for (var i = 0; i < initialFoodCount; i++)
+        foods.push(new Food());
 }
 
-var frame = 0;
 function draw() {
     frame++;
-
-    // Create fade effect.
-    noStroke();
-    fill(0, 30);
-    rect(0, 0, width, height);
-    
-    // Move and spawn particles.
-    // Remove any that is below the velocity threshold.
-    for (var i = allParticles.length - 1; i > -1; i--) {
-        allParticles[i].move();
-
-        if (allParticles[i].life > 3) {
-            allParticles.splice(i, 1);
+    background(backgroundColor);
+    cell.draw();
+    if (frame % 60 === 0) {
+        if (foods.length < foodCount) {
+            foods.push(new Food(10));
         }
     }
 
-    if (frame % 1 === 0) {
-        video.size(windowWidth, windowHeight);
-        video.loadPixels();
-        for (var y = 0; y < video.height; y = y + skip) {
-            for (var x = 0; x < video.width; x = x + skip) {
-                var index = x + y * video.width;
-                var r = video.pixels[index + 0];
-                var g = video.pixels[index + 1];
-                var b = video.pixels[index + 2];
-
-                var bright = (r + g + b) / 3;
-                var result = bright > threshold;
-
-                if (useFill)
-                    result = !result;
-
-
-                if (result) {
-                    allParticles.push(new Particle(x, y, maxLevel));
-                }
-            }
-        }
+    for (var i = 0; i < foods.length; i++) {
+        foods[i].draw();
     }
 
-    if (allParticles.length > 0) {
-        // Run script to get points to create triangles with.
-        data = Delaunay.triangulate(allParticles.map(function (pt) {
-            return [pt.pos.x, pt.pos.y];
-        }));
-
-        strokeWeight(0.1);
-
-        // Display triangles individually.
-        for (var i = 0; i < data.length; i += 3) {
-            // Collect particles that make this triangle.
-            var p1 = allParticles[data[i]];
-            var p2 = allParticles[data[i + 1]];
-            var p3 = allParticles[data[i + 2]];
-
-            // Don't draw triangle if its area is too big.
-            var distThresh = 15;
-
-            if (dist(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y) > distThresh) {
-                continue;
-            }
-
-            if (dist(p2.pos.x, p2.pos.y, p3.pos.x, p3.pos.y) > distThresh) {
-                continue;
-            }
-
-            if (dist(p1.pos.x, p1.pos.y, p3.pos.x, p3.pos.y) > distThresh) {
-                continue;
-            }
-
-            noFill();
-            stroke(165 + p1.life * 1.5, 360, 360);
-
-            triangle(p1.pos.x, p1.pos.y,
-                p2.pos.x, p2.pos.y,
-                p3.pos.x, p3.pos.y);
-        }
-    }
-
-    noStroke();
-    fill(255);
-
-    
-    text("Click and drag the mouse\nPress any key to change to fill/stroke", width / 2, height - 50);
+    if (mouseX > 10)
+        cell.moveTo(mouseX, mouseY, cell.x, cell.y);
+    cell.checkEat();
+    cursor(HAND);
 }
 
-function mouseDragged() {
-    
+function mousePressed() {
 }
 
+function Cell(radius) {
+    this.x = 200;
+    this.y = 200;
+    this.velX = 0;
+    this.velY = 0;
+    this.radius = radius;
+    this.color = color(255, 204, 0);
 
-function keyPressed() {
-    useFill = !useFill;
+    this.nucleus = new Nucleus(nucleusRadius);
+    this.membrane = new Membrane(membraneThickness);
+
+    this.draw = function () {
+        cell.move();
+        fill(this.color);
+        strokeWeight(this.membrane.thickness); // Default
+        stroke(this.membrane.color);
+        ellipse(this.x, this.y, this.radius);
+        this.nucleus.draw(this.x, this.y);
+    };
+
+    this.move = function(moveX, moveY) {
+        this.x += this.velX;
+        this.y += this.velY;
+
+        this.volume -= 2000;
+        this.radius = this.getRadiusByVolume();
+        this.volume = this.getVolume();
+    };
+    
+    this.moveTo = function (toX, toY, cellX, cellY) {
+        var deltaX = toX - cellX;
+        var deltaY = toY - cellY;
+        var deltaMag = GetMagnitude(deltaX, deltaY);
+        var adjustedX = deltaX / deltaMag;
+        var adjustedY = deltaY / deltaMag;
+        this.velX += adjustedX * this.getThrust(chunkMass, chunkSpeed);
+        this.velY += adjustedY * this.getThrust(chunkMass, chunkSpeed);
+    };
+
+    this.checkEat = function() {
+        for (var i = 0; i < foods.length; i++) {
+            var distance = GetDistanceBy(this.x, this.y, foods[i].x, foods[i].y);
+            if (distance < this.radius / 2) {
+                foods.splice(i, 1);
+                this.radius += 5;
+            }
+        }
+    };
+
+    this.getVolume = function () {
+        return (4 / 3) * Math.PI * this.radius * this.radius * this.radius;
+    };
+
+    this.getRadiusByVolume = function() {
+        return Math.cbrt(this.volume * (3 / (4 * Math.PI)) );
+    };
+
+    this.getArea = function() {
+        return 4 * Math.PI * this.radius * this.radius;
+    };
+
+    this.getVolumeToAreaRatio = function() {
+        return this.getArea() / this.getVolume();
+    };
+
+    this.getThrust = function (mass, velocity) {
+        return mass * velocity / (this.volume - mass);
+    };
+}
+
+function Membrane(thickness) {
+    this.thickness = thickness;
+    this.color = color(80, 80, 80);
+}
+
+function Nucleus(radius) {
+    this.radius = radius;
+    this.color = color(25, 25, 25);
+    this.x = 0;
+    this.y = 0;
+
+    this.draw = function(parentX, parentY) {
+        fill(this.color);
+        noStroke();
+        ellipse(this.x + parentX, this.y + parentY, this.radius);
+    };
+}
+
+function Food(radius) {
+    this.radius = radius;
+    this.color = color(25, 225, 25);
+    this.x = Math.floor((Math.random() * windowWidth) + 1);
+    this.y = Math.floor((Math.random() * windowHeight) + 1);
+
+    this.draw = function() {
+        fill(this.color);
+        noStroke();
+        ellipse(this.x, this.y, this.radius);
+    };
+}
+
+function GetDistance(cell, food) {
+    var deltaX = cell.x - food.x;
+    var deltaY = cell.x - food.x;
+    return GetMagnitude(deltaX, deltaY);
+}
+
+function GetDistanceBy(x1, y1, x2 , y2) {
+    var deltaX = x1 - x2;
+    var deltaY = y1 - y2;
+    return GetMagnitude(deltaX, deltaY);
+}
+
+function GetMagnitude(deltaX, deltaY) {
+    return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 }
