@@ -5,13 +5,13 @@ var cellRadius = 60;
 var cellSpeed = 0;
 var nucleusRadius = 20;
 var membraneThickness = 3;
-var friction = 0.1;
 var chunkMass = 200;
 var chunkSpeed = 500;
 var massUnit = 10000;
 var foodVolume = 500000;
-var friction = 0.005;
-var minFriction = 0.005;
+var friction = 0.01;
+var minFriction = 0.01;
+var minFrictionConstant = 10;
 
 var cell;
 var backgroundColor;
@@ -67,7 +67,6 @@ function Cell(radius) {
     this.velY = 0;
     this.radius = radius;
     this.color = color(255, 204, 0);
-
     this.nucleus = new Nucleus(nucleusRadius);
     this.membrane = new Membrane(membraneThickness);
 
@@ -116,11 +115,12 @@ function Cell(radius) {
         this.volume = this.getVolume();
     };
 	
-    this.friction = function(){
-		var totalVel = this.getSpeed();
+    this.friction = function () {
+        var xRatio = 0;
+        var yRatio = 0;
 		if(Math.abs(this.velX) > 0)
 		{
-			var xRatio =  this.velX * friction;
+			xRatio =  this.velX * friction;
 			
 			if(this.velX > 0)
 			{
@@ -131,20 +131,12 @@ function Cell(radius) {
 			{
 				if(xRatio < this.velX)
 					xRatio = this.velX;
-			}			
-			
-			if(Math.abs(xRatio) < minFriction)
-			{
-				if(xRatio > 0)
-					xRatio = minFriction;
-				else
-					xRatio = -minFriction;
-			}
-			this.velX -= xRatio;
+			}		
 		}
+
 		if(Math.abs(this.velY) > 0)
 		{
-			var yRatio = this.velY * friction;
+			yRatio = this.velY * friction;
 			
 			if(this.velY > 0)
 			{
@@ -156,17 +148,19 @@ function Cell(radius) {
 				if(yRatio < this.velY)
 					yRatio = this.velY;
 			}	
+        }
 
-			if(Math.abs(yRatio) < minFriction)
-			{
-				if(yRatio > 0)
-					yRatio = minFriction;
-				else
-					yRatio = -minFriction;
-			}
-		
-			this.velY -= yRatio;
-		}
+        var totalFriction = GetMagnitude(xRatio, yRatio);
+        var absFriction = Math.abs(totalFriction);
+
+        if (absFriction < minFriction && absFriction !== 0) {
+            var ratio = minFriction / absFriction;
+            xRatio = ratio * xRatio;
+            yRatio = ratio * yRatio;
+        }
+
+		this.velY -= yRatio;
+		this.velX -= xRatio;
 	}
 	
     this.moveTo = function (toX, toY) {
