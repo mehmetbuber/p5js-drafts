@@ -12,6 +12,7 @@ var foodVolume = 500000;
 var friction = 0.01;
 var minFriction = 0.01;
 var minFrictionConstant = 10;
+var thrustLength = 20;
 
 var cell;
 var backgroundColor;
@@ -77,34 +78,37 @@ function Cell(radius) {
         fill(this.color);
         strokeWeight(this.membrane.thickness); // Default
         stroke(this.membrane.color);
-        ellipse(this.x, this.y, this.radius);
+        ellipse(this.x, this.y, this.radius * 2);
         this.nucleus.draw(this.x, this.y);
 		this.friction();
     };
 
 	this.drawThrustLines = function(){
+        stroke(200, 200, 200);
+        line(cell.x, cell.y, cell.x + cell.velX * 100, cell.y + cell.velY * 100);
 
-		stroke(225,50,50);
-		line(cell.x, cell.y, cell.x + cell.velX * 100, cell.y + cell.velY * 100);
-		stroke(225,50,50);
-		if (keyIsDown(LEFT_ARROW)) {
+        stroke(225, 50, 50);
+
+        if (keyIsDown(LEFT_ARROW)) {
 			cell.moveTo(-1, 0, cell.x, cell.y);
-			line(cell.x, cell.y, cell.x + 100, cell.y);
+            line(cell.x, cell.y, cell.x + thrustLength + cell.radius, cell.y);
 		}
 
-		if (keyIsDown(RIGHT_ARROW)) {
-			cell.moveTo(1, 0, cell.x, cell.y);
-			line(cell.x, cell.y, cell.x - 100, cell.y);
+        noFill();
+        if (keyIsDown(RIGHT_ARROW)) {
+
+            cell.moveTo(1, 0, cell.x, cell.y);
+            line(cell.x - cell.radius, cell.y, cell.x - thrustLength - cell.radius, cell.y);
 		}
 
 		if (keyIsDown(UP_ARROW)) {
 			cell.moveTo(0, -1, cell.x, cell.y);
-			line(cell.x, cell.y, cell.x, cell.y + 100);
+            line(cell.x, cell.y, cell.x, cell.y + thrustLength + cell.radius);
 		}
 
 		if (keyIsDown(DOWN_ARROW)) {
 			cell.moveTo(0, 1, cell.x, cell.y);
-			line(cell.x, cell.y, cell.x, cell.y - 100);
+            line(cell.x, cell.y, cell.x, cell.y - thrustLength - cell.radius);
 		}
 		noStroke();
 	}
@@ -175,7 +179,7 @@ function Cell(radius) {
     this.checkEat = function() {
         for (var i = 0; i < foods.length; i++) {
             var distance = GetDistanceBy(this.x, this.y, foods[i].x, foods[i].y);
-            if (distance < this.radius / 2) {
+            if (distance < this.radius) {
                 foods.splice(i, 1);
 				this.volume += foodVolume;
 				this.radius = this.getRadiusByVolume();
