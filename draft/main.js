@@ -6,14 +6,20 @@ var cellSpeed = 0;
 var nucleusRadius = 20;
 var membraneThickness = 3;
 var friction = 0.1;
-var chunkMass = 2000;
-var chunkSpeed = 10;
+var chunkMass = 200;
+var chunkSpeed = 500;
+var massUnit = 10000;
+var foodVolume = 500000;
+var friction = 0.005;
+var minFriction = 0.005;
 
 var cell;
 var backgroundColor;
 var frame = 0;
 var foods = [];
 var direction = 1;
+var x = 100;
+var y = 100;
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
@@ -29,26 +35,29 @@ function setup() {
 }
 
 function draw() {
+	
     frame++;
     background(backgroundColor);
-    cell.draw();
-    if (frame % 60 === 0) {
-        if (foods.length < foodCount) {
-            foods.push(new Food(10));
-        }
-    }
+    cursor(HAND);
+	
 
     for (var i = 0; i < foods.length; i++) {
         foods[i].draw();
     }
 
-    if (mouseX > 10)
-        cell.moveTo(mouseX, mouseY, cell.x, cell.y);
     cell.checkEat();
-    cursor(HAND);
+    cell.draw();
+	
+    if (frame % 60 === 0) {
+        if (foods.length < foodCount) {
+            foods.push(new Food(10));
+        }
+    }
+	
 }
 
 function mousePressed() {
+	
 }
 
 function Cell(radius) {
@@ -63,31 +72,110 @@ function Cell(radius) {
     this.membrane = new Membrane(membraneThickness);
 
     this.draw = function () {
-        cell.move();
+		this.drawThrustLines();
+        this.x += this.velX;
+        this.y += this.velY;
         fill(this.color);
         strokeWeight(this.membrane.thickness); // Default
         stroke(this.membrane.color);
         ellipse(this.x, this.y, this.radius);
         this.nucleus.draw(this.x, this.y);
+		this.friction();
     };
 
-    this.move = function(moveX, moveY) {
-        this.x += this.velX;
-        this.y += this.velY;
+	this.drawThrustLines = function(){
 
+		stroke(225,50,50);
+		line(cell.x, cell.y, cell.x + cell.velX * 100, cell.y + cell.velY * 100);
+		stroke(225,50,50);
+		if (keyIsDown(LEFT_ARROW)) {
+			cell.moveTo(-1, 0, cell.x, cell.y);
+			line(cell.x, cell.y, cell.x + 100, cell.y);
+		}
+
+		if (keyIsDown(RIGHT_ARROW)) {
+			cell.moveTo(1, 0, cell.x, cell.y);
+			line(cell.x, cell.y, cell.x - 100, cell.y);
+		}
+
+		if (keyIsDown(UP_ARROW)) {
+			cell.moveTo(0, -1, cell.x, cell.y);
+			line(cell.x, cell.y, cell.x, cell.y + 100);
+		}
+
+		if (keyIsDown(DOWN_ARROW)) {
+			cell.moveTo(0, 1, cell.x, cell.y);
+			line(cell.x, cell.y, cell.x, cell.y - 100);
+		}
+		noStroke();
+	}
+	
+    this.move = function(velX, velY) {
         this.volume -= 2000;
         this.radius = this.getRadiusByVolume();
         this.volume = this.getVolume();
     };
-    
-    this.moveTo = function (toX, toY, cellX, cellY) {
-        var deltaX = toX - cellX;
-        var deltaY = toY - cellY;
-        var deltaMag = GetMagnitude(deltaX, deltaY);
-        var adjustedX = deltaX / deltaMag;
-        var adjustedY = deltaY / deltaMag;
-        this.velX += adjustedX * this.getThrust(chunkMass, chunkSpeed);
-        this.velY += adjustedY * this.getThrust(chunkMass, chunkSpeed);
+	
+    this.friction = function(){
+		var totalVel = this.getSpeed();
+		if(Math.abs(this.velX) > 0)
+		{
+			var xRatio =  this.velX * friction;
+			
+			if(this.velX > 0)
+			{
+				if(xRatio > this.velX)
+					xRatio = this.velX;
+			}
+			else
+			{
+				if(xRatio < this.velX)
+					xRatio = this.velX;
+			}			
+			
+			if(Math.abs(xRatio) < minFriction)
+			{
+				if(xRatio > 0)
+					xRatio = minFriction;
+				else
+					xRatio = -minFriction;
+			}
+			this.velX -= xRatio;
+		}
+		if(Math.abs(this.velY) > 0)
+		{
+			var yRatio = this.velY * friction;
+			
+			if(this.velY > 0)
+			{
+				if(yRatio > this.velY)
+					yRatio = this.velY;
+			}
+			else
+			{
+				if(yRatio < this.velY)
+					yRatio = this.velY;
+			}	
+
+			if(Math.abs(yRatio) < minFriction)
+			{
+				if(yRatio > 0)
+					yRatio = minFriction;
+				else
+					yRatio = -minFriction;
+			}
+		
+			this.velY -= yRatio;
+		}
+	}
+	
+    this.moveTo = function (toX, toY) {
+        var deltaMag = GetMagnitude(toX, toY);
+        var adjustedX = toX / deltaMag;
+        var adjustedY = toY / deltaMag;
+        this.velX += adjustedX * this.getThrust(this.getThrustForUnitMass(this.volume), chunkSpeed);
+        this.velY += adjustedY * this.getThrust(this.getThrustForUnitMass(this.volume), chunkSpeed);
+        cell.move();
     };
 
     this.checkEat = function() {
@@ -95,7 +183,9 @@ function Cell(radius) {
             var distance = GetDistanceBy(this.x, this.y, foods[i].x, foods[i].y);
             if (distance < this.radius / 2) {
                 foods.splice(i, 1);
-                this.radius += 5;
+				this.volume += foodVolume;
+				this.radius = this.getRadiusByVolume();
+				this.volume = this.getVolume();
             }
         }
     };
@@ -119,6 +209,14 @@ function Cell(radius) {
     this.getThrust = function (mass, velocity) {
         return mass * velocity / (this.volume - mass);
     };
+	
+	this.getSpeed = function(){
+		return GetMagnitude(this.velX, this.velY);
+	}
+	
+	this.getThrustForUnitMass = function(mass){
+		return mass / massUnit;
+	};
 }
 
 function Membrane(thickness) {
