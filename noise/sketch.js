@@ -6,7 +6,6 @@ var heartSlider;
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
-    colorMode(HSB, 255);
 
     heartSlider = createSlider(0.01, 1, 0.01, 0.01);
     heartSlider.position(20, 20);
@@ -92,11 +91,10 @@ function Particle(right) {
         }
         strokeWeight(this.r );
 
-        this.r += 0.01;
         beginShape();
         for (var i = 0; i < this.path.length; i++) {
             var ratio = i / this.totalLength;
-            stroke(this.red, this.green, this.blue, this.alpha * ratio);
+            stroke(this.red, this.green, this.blue, 255 * ratio);
             vertex(this.path[i].x, this.path[i].y);
         }
         endShape();
